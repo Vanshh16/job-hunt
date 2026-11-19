@@ -2,7 +2,9 @@ name: Telegram job sync
 
 on:
   schedule:
-    - cron: "*/20 * * * *" # every 20 minutes (GitHub may delay scheduled runs a little)
+    # Every 20 minutes at off-peak minutes: GitHub often delays or drops schedules that fire at :00.
+    # Schedules are best effort; a brand-new repo can take a few hours before the first scheduled run.
+    - cron: "7,27,47 * * * *"
   workflow_dispatch: {}
 
 concurrency:
