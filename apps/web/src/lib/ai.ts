@@ -20,17 +20,57 @@ function extraParams(): Record<string, unknown> {
 }
 const MODEL = AI_MODEL;
 
-export async function chatJSON<T>(system: string, user: string): Promise<T> {
-  const res = await openai().chat.completions.create({
-    model: MODEL(),
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: system + "\nAlways reply with a single valid JSON object." },
-      { role: "user", content: user },
-    ],
-    ...extraParams(),
-  } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
-  const text = res.choices[0]?.message?.content ?? "{}";
+/**
+ * Stronger models used for WRITING (form answers, cover letters, outreach), tried in order.
+ * On the free tier these are often "503 high demand", so each gets one short attempt and we
+ * fall back to the fast default model — writing never fails, it just uses the best model available.
+ */
+export const WRITING_MODELS = () =>
+  (process.env.GEMINI_WRITING_MODELS ?? "gemini-3.8-flash,gemini-3-flash-preview")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+const WRITING_ATTEMPT_MS = 22_000; // per strong-model attempt
+const WRITING_BUDGET_MS = 30_000; // stop trying strong models after this, leave time for the fallback
+
+type Opts = { writing?: boolean };
+
+async function complete(messages: OpenAI.Chat.ChatCompletionMessageParam[], json: boolean, opts: Opts = {}) {
+  const base = { messages, ...(json ? { response_format: { type: "json_object" as const } } : {}), ...extraParams() };
+  const started = Date.now();
+  if (opts.writing) {
+    for (const model of WRITING_MODELS()) {
+      if (model === MODEL() || Date.now() - started > WRITING_BUDGET_MS) break;
+      try {
+        const res = await openai().chat.completions.create({ ...base, model } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming, {
+          timeout: WRITING_ATTEMPT_MS,
+          maxRetries: 0,
+        });
+        const text = res.choices[0]?.message?.content;
+        if (text?.trim()) {
+          console.info(`[ai] writing done with ${model}`);
+          return text;
+        }
+      } catch (e) {
+        console.warn(`[ai] ${model} unavailable (${e instanceof Error ? e.message.slice(0, 80) : e}); trying next`);
+      }
+    }
+  }
+  const res = await openai().chat.completions.create({ ...base, model: MODEL() } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
+  return res.choices[0]?.message?.content ?? "";
+}
+
+export async function chatJSON<T>(system: string, user: string, opts: Opts = {}): Promise<T> {
+  const text =
+    (await complete(
+      [
+        { role: "system", content: system + "\nAlways reply with a single valid JSON object." },
+        { role: "user", content: user },
+      ],
+      true,
+      opts,
+    )) || "{}";
   try {
     return JSON.parse(text) as T;
   } catch {
@@ -39,16 +79,16 @@ export async function chatJSON<T>(system: string, user: string): Promise<T> {
   }
 }
 
-export async function chatText(system: string, user: string): Promise<string> {
-  const res = await openai().chat.completions.create({
-    model: MODEL(),
-    messages: [
+export async function chatText(system: string, user: string, opts: Opts = {}): Promise<string> {
+  const text = await complete(
+    [
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    ...extraParams(),
-  } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
-  return (res.choices[0]?.message?.content ?? "").trim();
+    false,
+    opts,
+  );
+  return text.trim();
 }
 
 export const clip = (s: string | null | undefined, n: number) => (s ?? "").slice(0, n);
@@ -191,6 +231,7 @@ Return {"answers":[{"id","value"}]} for every field id.`,
       job: input.job ? { ...input.job, description: clip(input.job.description, 4000) } : null,
       resume: clip(input.resumeText, 6000),
     }),
+    { writing: true },
   );
   const map: Record<string, string | string[]> = {};
   for (const a of out.answers ?? []) if (a?.id != null) map[a.id] = a.value ?? "";
@@ -203,6 +244,7 @@ export async function writeCoverLetter(job: { title: string; company: string; de
   return chatText(
     `Write a concise, specific cover letter (180-250 words) for the candidate. Plain text, no placeholders like [Company]. Open with a hook tied to the company/role, connect 2-3 concrete experiences/projects from the resume to the job's requirements, close with a confident call to action. Sign with the candidate's name.`,
     JSON.stringify({ job: { ...job, description: clip(job.description, 5000) }, resume: clip(resumeText, 6000), candidate: profile, extraInstructions: extra ?? "" }),
+    { writing: true },
   );
 }
 
@@ -218,5 +260,6 @@ export async function writeOutreach(kind: OutreachKind, job: { title: string; co
   return chatText(
     `You draft outreach messages for a job seeker. Write ${brief[kind]} Be warm, specific and human, never generic or desperate. Use [Name] only for the recipient's name.`,
     JSON.stringify({ job: { ...job, description: clip(job.description, 3000) }, resume: clip(resumeText, 4000), candidate: profile, extraInstructions: extra ?? "" }),
+    { writing: true },
   );
 }

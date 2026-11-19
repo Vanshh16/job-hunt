@@ -39,6 +39,7 @@ Environment variables (`apps/web/.env`, and the same ones in Vercel):
 | `AUTH_SECRET`, `API_TOKEN`, `CRON_SECRET` | long random strings: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `GEMINI_API_KEY` | free key from <https://aistudio.google.com/apikey> (no credit card) |
 | `GEMINI_MODEL` | `gemini-flash-lite-latest` (default: fast, highest free limits). `-latest` aliases follow Google's current model, so they don't break when numbered versions are retired |
+| `GEMINI_WRITING_MODELS` | optional, comma-separated. Stronger models tried first for form answers, cover letters and outreach (default `gemini-3.8-flash,gemini-3-flash-preview`). If they're busy (common on the free tier) the app falls back to `GEMINI_MODEL` automatically |
 | `GEMINI_REASONING_EFFORT` | optional: `none` / `low` makes responses faster |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | your notification bot (step 5) |
 | `APP_URL` | your public URL, e.g. `https://jobhunt-yourname.vercel.app` |
