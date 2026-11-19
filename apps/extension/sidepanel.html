@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Job Hunt Copilot</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <div class="brand">Job Hunt</div>
+        <div id="who" class="muted small">Connecting…</div>
+      </div>
+      <a id="open-dash" class="link small" target="_blank">Dashboard ↗</a>
+    </header>
+
+    <div id="page" class="muted small ellipsis"></div>
+    <div id="error" class="error hidden"></div>
+
+    <section id="setup" class="card hidden">
+      <h3>Connect to your dashboard</h3>
+      <label>Dashboard URL<input id="baseUrl" placeholder="https://your-app.vercel.app" /></label>
+      <label>API token<input id="token" type="password" placeholder="From the dashboard's Setup page" /></label>
+      <div class="row">
+        <button id="save-config" class="primary">Save & test</button>
+        <button id="cancel-config" class="ghost">Cancel</button>
+      </div>
+    </section>
+
+    <section id="main">
+      <div class="card">
+        <div class="row between">
+          <h3>This job</h3>
+          <button id="analyze" class="secondary sm">Analyze page</button>
+        </div>
+        <div id="job" class="muted small">Open a job posting and click Analyze to get a fit score and the best resume.</div>
+      </div>
+
+      <div class="card">
+        <h3>Apply</h3>
+        <label>Resume to attach<select id="resume"></select></label>
+        <label class="check"><input type="checkbox" id="use-ai" checked /> Use AI for custom questions</label>
+        <button id="autofill" class="primary block">⚡ Autofill this form <span class="kbd">Alt+Shift+F</span></button>
+        <div id="fill-result" class="small"></div>
+        <div class="row wrap">
+          <button id="save-answers" class="secondary sm">Save answers to bank</button>
+          <button id="mark-applied" class="success sm">Mark applied ✓</button>
+        </div>
+        <p class="hint">Green = from your profile/answer bank · Amber = AI draft, review before submitting. Multi-page forms: autofill again on each step.</p>
+      </div>
+
+      <div class="card">
+        <h3>Write</h3>
+        <div class="row wrap">
+          <button data-kind="cover" class="chip">Cover letter</button>
+          <button data-kind="referral" class="chip">Referral ask</button>
+          <button data-kind="recruiter" class="chip">Recruiter email</button>
+          <button data-kind="followup" class="chip">Follow-up</button>
+        </div>
+        <textarea id="gen-out" class="hidden" rows="12"></textarea>
+        <button id="copy" class="secondary sm hidden">Copy</button>
+      </div>
+
+      <button id="settings" class="ghost small">⚙ Settings</button>
+    </section>
+
+    <script src="sidepanel.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Job Hunt Copilot",
+  "version": "1.0.0",
+  "description": "Autofill job applications, pick the right resume, draft answers and track everything in your Job Hunt dashboard.",
+  "permissions": ["storage", "sidePanel", "scripting", "activeTab", "tabs", "webNavigation", "contextMenus", "notifications"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "Job Hunt Copilot", "default_icon": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" } },
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "autofill": {
+      "suggested_key": { "default": "Alt+Shift+F" },
+      "description": "Autofill the application form on this page"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Test Application</title>
+<script>window.chrome={runtime:{onMessage:{addListener(fn){window.__jh=(m)=>new Promise(r=>fn(m,{},r))}}}};</script>
+<style>body{font-family:sans-serif;padding:20px} .q{margin:12px 0}</style></head><body>
+<h2>Frontend Engineer Intern — Acme</h2>
+<form>
+ <div class="q"><label for="fn">First Name *</label><input id="fn" required></div>
+ <div class="q"><label for="ln">Last Name</label><input id="ln"></div>
+ <div class="q"><label>Email <input type="email" name="email"></label></div>
+ <div class="q"><div class="field-label">Phone</div><input type="tel" name="phone"></div>
+ <div class="q"><label for="li">LinkedIn Profile</label><input id="li" type="url"></div>
+ <div class="q"><label for="np">Notice period</label><select id="np"><option>Select...</option><option>Immediate</option><option>15 days</option><option>30 days</option></select></div>
+ <fieldset class="q"><legend>Are you willing to relocate to Bangalore?</legend>
+   <label><input type="radio" name="reloc" value="y"> Yes</label><label><input type="radio" name="reloc" value="n"> No</label></fieldset>
+ <div class="q"><label for="why">Why do you want to work at Acme?</label><textarea id="why"></textarea></div>
+ <div class="q"><label>Resume/CV <input type="file" name="resume"></label></div>
+ <div class="q"><label><input type="checkbox" name="tos"> I agree to the privacy policy</label></div>
+</form>
+<div role="list">
+ <div role="listitem"><div role="heading">Graduation year</div>
+   <div role="radiogroup"><div role="radio" data-value="2024" aria-checked="false" onclick="this.setAttribute('aria-checked','true')">2024</div><div role="radio" data-value="2025" aria-checked="false" onclick="this.setAttribute('aria-checked','true')">2025</div></div></div>
+ <div role="listitem"><div role="heading">Which skills do you have?</div>
+   <div role="checkbox" data-answer-value="React" aria-checked="false" onclick="this.setAttribute('aria-checked',this.getAttribute('aria-checked')==='true'?'false':'true')">React</div>
+   <div role="checkbox" data-answer-value="SQL" aria-checked="false" onclick="this.setAttribute('aria-checked',this.getAttribute('aria-checked')==='true'?'false':'true')">SQL</div>
+   <div role="checkbox" data-answer-value="Java" aria-checked="false" onclick="this.setAttribute('aria-checked',this.getAttribute('aria-checked')==='true'?'false':'true')">Java</div></div>
+</div>
+<script src="/content.js"></script>
+</body></html>

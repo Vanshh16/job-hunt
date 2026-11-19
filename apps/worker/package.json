@@ -1,0 +1,17 @@
+{
+  "name": "jobhunt-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reads your Telegram job group(s) and sends new posts to the Job Hunt dashboard.",
+  "scripts": {
+    "login": "node src/login.mjs",
+    "chats": "node --env-file-if-exists=.env src/list-chats.mjs",
+    "sync": "node --env-file-if-exists=.env src/sync.mjs",
+    "watch": "node --env-file-if-exists=.env src/sync.mjs --watch"
+  },
+  "dependencies": {
+    "telegram": "^2.26.0"
+  },
+  "engines": { "node": ">=20.6" }
+}

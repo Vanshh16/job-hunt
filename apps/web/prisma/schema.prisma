@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum JobStatus {
+  NEW // discovered, not acted on yet (inbox)
+  SAVED // shortlisted, plan to apply
+  APPLIED
+  OA // online assessment / assignment
+  INTERVIEW
+  OFFER
+  REJECTED
+  GHOSTED
+  DISMISSED // not interested
+}
+
+/// Singleton row (id = 1): autofill data + job preferences.
+model Profile {
+  id          Int      @id @default(1)
+  fields      Json     @default("{}")
+  preferences Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+}
+
+model Resume {
+  id        String   @id @default(cuid())
+  label     String
+  fileName  String
+  mimeType  String
+  data      Bytes
+  text      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Job {
+  id           String    @id @default(cuid())
+  dedupeKey    String    @unique
+  title        String
+  company      String
+  location     String?
+  url          String?
+  applyType    String? // portal | google_form | email | linkedin | other
+  applyEmail   String?
+  description  String?
+  salary       String?
+  experience   String?
+  eligibility  String?
+  deadline     DateTime?
+  source       String // telegram | extension | manual
+  sourceRef    String?
+  rawText      String?
+  matchScore   Int?
+  matchSummary String?
+  bestResumeId String?
+  analysis     Json?
+  status       JobStatus @default(NEW)
+  appliedAt    DateTime?
+  followUpAt   DateTime?
+  notes        String?
+  coverLetter  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  activities   Activity[]
+
+  @@index([status])
+  @@index([matchScore])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  jobId     String?
+  job       Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+}
+
+/// Answer bank: reusable answers to screening questions.
+model Answer {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  uses      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Telegram messages already ingested (dedupe + cursor).
+model TelegramMessage {
+  id        String   @id // `${chat}:${messageId}`
+  chat      String
+  messageId Int
+  jobsFound Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([chat, messageId])
+}
