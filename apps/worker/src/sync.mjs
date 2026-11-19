@@ -11,6 +11,15 @@ const GROUPS = need("TELEGRAM_GROUPS").split(",").map((s) => s.trim()).filter(Bo
 const BACKFILL = Number(process.env.INITIAL_BACKFILL || 30);
 const WATCH = process.argv.includes("--watch");
 
+// A one-shot sync should finish in a minute or two. If Telegram becomes unreachable, GramJS can retry
+// for a long time — fail loudly instead (the next scheduled run resumes from the saved cursor).
+if (!WATCH) {
+  setTimeout(() => {
+    console.error("\n✖ Sync took longer than 7 minutes (Telegram unreachable or AI very slow). Exiting; the next run will resume where this one stopped.");
+    process.exit(1);
+  }, 7 * 60_000).unref();
+}
+
 async function api(path, body, attempt = 1) {
   const res = await fetch(APP_URL + path, {
     method: body ? "POST" : "GET",

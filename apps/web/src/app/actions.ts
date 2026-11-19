@@ -75,7 +75,8 @@ async function extractResumeText(file: File) {
   const buf = new Uint8Array(await file.arrayBuffer());
   if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
     const { extractText, getDocumentProxy } = await import("unpdf");
-    const pdf = await getDocumentProxy(buf);
+    // pdf.js takes ownership of (detaches) the buffer it's given — pass a copy so `buf` keeps the file bytes.
+    const pdf = await getDocumentProxy(buf.slice());
     const { text } = await extractText(pdf, { mergePages: true });
     return { buf, text: String(text) };
   }
@@ -89,6 +90,7 @@ export async function uploadResume(_: unknown, form: FormData) {
   if (!(file instanceof File) || !file.size) return { error: "Choose a PDF file" };
   if (file.size > 4 * 1024 * 1024) return { error: "File too large (max 4 MB)" };
   const { buf, text } = await extractResumeText(file);
+  if (buf.byteLength !== file.size) return { error: "Upload failed while reading the file — please try again." };
   if (text.trim().length < 100) return { error: "Couldn't read text from this file. Use a text-based PDF (not a scanned image)." };
   const count = await prisma.resume.count();
   await prisma.resume.create({
