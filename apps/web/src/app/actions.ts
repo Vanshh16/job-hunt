@@ -12,6 +12,7 @@ import { ingestText, logActivity, scoreJob, setStatus, upsertExtractedJob } from
 import { writeCoverLetter, writeOutreach, type OutreachKind } from "@/lib/ai";
 import { detectChats, notify, telegramConfigured } from "@/lib/telegram";
 import { norm } from "@/lib/fieldmap";
+import { setSetting } from "@/lib/settings";
 
 // ---------- Auth ----------
 
@@ -262,4 +263,19 @@ export async function findTelegramChats() {
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed", chats: [] };
   }
+}
+
+// ---------- Telegram groups ----------
+
+/** Save which Telegram groups/channels the worker should read (takes effect on the next sync). */
+export async function setTelegramChats(enabledIds: string[]) {
+  await assertSession();
+  const ids = [...new Set(enabledIds.map(String))];
+  await prisma.$transaction([
+    prisma.telegramChat.updateMany({ where: { id: { notIn: ids } }, data: { enabled: false } }),
+    prisma.telegramChat.updateMany({ where: { id: { in: ids } }, data: { enabled: true } }),
+  ]);
+  await setSetting("telegramManaged", true);
+  revalidatePath("/settings");
+  return { ok: true, count: ids.length };
 }

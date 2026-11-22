@@ -1,4 +1,6 @@
-// Pulls new messages from the configured Telegram groups and sends them to the dashboard.
+// Pulls new messages from your selected Telegram groups and sends them to the dashboard.
+// Which groups: picked on the dashboard's Setup page. Each run uploads your group/channel list there.
+// TELEGRAM_GROUPS (optional) is only used as the initial selection before you've picked any in the dashboard.
 //   node src/sync.mjs          -> one pass (for cron / GitHub Actions)
 //   node src/sync.mjs --watch  -> one pass, then stay connected and forward new messages live
 import { NewMessage } from "telegram/events/index.js";
@@ -7,7 +9,7 @@ import { makeClient, need } from "./common.mjs";
 const APP_URL = need("APP_URL").replace(/\/+$/, "");
 const API_TOKEN = need("API_TOKEN");
 need("TELEGRAM_SESSION");
-const GROUPS = need("TELEGRAM_GROUPS").split(",").map((s) => s.trim()).filter(Boolean);
+const ENV_GROUPS = (process.env.TELEGRAM_GROUPS || "").split(",").map((s) => s.trim()).filter(Boolean);
 const BACKFILL = Number(process.env.INITIAL_BACKFILL || 30);
 const WATCH = process.argv.includes("--watch");
 
@@ -70,21 +72,48 @@ async function ingest(chatKey, entity, msg) {
   if (r.jobsFound) console.log(`  #${msg.id}: ${r.jobsFound} job(s), ${r.created} new`);
 }
 
-async function resolve(client, g) {
-  if (!/^-?\d+$/.test(g)) return client.getEntity(g.replace(/^https?:\/\/t\.me\//, "").replace(/^@?/, "@"));
-  // Numeric ids (from `npm run chats`) are resolved via the dialog list.
-  const dialogs = await client.getDialogs({ limit: 300 });
-  const d = dialogs.find((x) => String(x.id) === g || String(x.entity?.id) === g.replace(/^-100/, ""));
-  if (!d) throw new Error(`Can't find group "${g}". Run \`npm run chats\` to list ids.`);
-  return d.entity;
+/** Does a TELEGRAM_GROUPS entry (numeric id, @username or t.me link) refer to this chat? */
+function matchesEnv(g, chat) {
+  if (/^-?\d+$/.test(g)) return g === chat.markedId || g.replace(/^-100/, "").replace(/^-/, "") === chat.id;
+  const u = g.replace(/^https?:\/\/t\.me\//, "").replace(/^@/, "").toLowerCase();
+  return !!chat.username && chat.username.toLowerCase() === u;
 }
 
 const client = makeClient();
 await client.connect();
+
+// 1. Upload the list of groups/channels this account is in, get back the ones selected in the dashboard.
+const dialogs = await client.getDialogs({ limit: 500 });
+const chats = dialogs
+  .filter((d) => (d.isGroup || d.isChannel) && d.entity)
+  .map((d) => ({
+    id: String(d.entity.id),
+    markedId: String(d.id),
+    title: d.title || "(untitled)",
+    username: d.entity.username || null,
+    kind: d.isChannel && !d.isGroup ? "channel" : "group",
+    entity: d.entity,
+  }));
+const envGroups = chats.filter((c) => ENV_GROUPS.some((g) => matchesEnv(g, c))).map((c) => c.id);
+const { groups, managed } = await api("/api/ingest/chats", {
+  chats: chats.map(({ id, title, username, kind }) => ({ id, title, username, kind })),
+  envGroups,
+});
+const selected = chats.filter((c) => groups.includes(c.id));
+console.log(`Uploaded ${chats.length} groups/channels. Syncing ${selected.length} selected in the dashboard.`);
+if (!selected.length) {
+  console.log(
+    managed
+      ? "No groups are ticked on the dashboard's Setup page — nothing to sync."
+      : "No groups selected yet: tick the groups to read on the dashboard's Setup page (or set TELEGRAM_GROUPS).",
+  );
+}
+
+// 2. Pull new messages from each selected group.
 const entities = [];
-for (const g of GROUPS) {
-  const entity = await resolve(client, g);
-  const chatKey = String(entity.id);
+for (const c of selected) {
+  const { entity, id: chatKey } = c;
+  const g = c.title;
   entities.push({ entity, chatKey });
   const { lastMessageId } = await api(`/api/ingest/cursor?chat=${encodeURIComponent(chatKey)}`);
   const msgs = lastMessageId

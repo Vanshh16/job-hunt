@@ -88,9 +88,9 @@ Extras: right-click selected text (for example a LinkedIn "we're hiring" post) �
    npm run login            # phone + code (+ 2FA) → prints TELEGRAM_SESSION
    ```
    Put the printed session string in `.env`. **Treat it like a password**: it is a logged-in session of your account.
-3. Find the group: `npm run chats` → copy its id (or use `@username`) → `TELEGRAM_GROUPS` (comma-separated for several).
+3. Choose groups: after the first sync, open the dashboard's **Setup → Telegram groups to read** and tick the groups/channels to scan (search box, "looks job-related" filter). The list refreshes every sync, so groups you join later appear automatically. `TELEGRAM_GROUPS` is optional — it only seeds the initial selection.
 4. Test once locally: `npm run sync`. The first run only imports the last 30 posts (`INITIAL_BACKFILL`).
-5. Automate it: in your GitHub repo → *Settings → Secrets and variables → Actions*, add `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_SESSION`, `TELEGRAM_GROUPS`, `APP_URL` and `API_TOKEN`. The workflow `.github/workflows/telegram-sync.yml` runs every 20 minutes (you can also trigger it manually from the Actions tab).
+5. Automate it: in your GitHub repo → *Settings → Secrets and variables → Actions*, add `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_SESSION`, `APP_URL` and `API_TOKEN` (plus optional `TELEGRAM_GROUPS`). The workflow `.github/workflows/telegram-sync.yml` runs every 20 minutes (you can also trigger it manually from the Actions tab).
 
 Want it instant instead of every 20 minutes? Run `npm run watch` on any always-on machine (Railway, Fly.io, a Raspberry Pi) instead of GitHub Actions.
 

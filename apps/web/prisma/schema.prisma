@@ -94,6 +94,24 @@ model Answer {
   updatedAt DateTime @updatedAt
 }
 
+/// Telegram groups/channels the worker can see (uploaded each sync). `enabled` = read by the sync.
+model TelegramChat {
+  id       String   @id // entity id — same key the ingest cursor uses
+  title    String
+  username String?
+  kind     String // group | channel
+  enabled  Boolean  @default(false)
+  seenAt   DateTime @default(now())
+
+  @@index([enabled])
+}
+
+/// Small key/value settings store.
+model AppSetting {
+  key   String @id
+  value Json
+}
+
 /// Telegram messages already ingested (dedupe + cursor).
 model TelegramMessage {
   id        String   @id // `${chat}:${messageId}`

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { TelegramTools } from "@/components/Forms";
 import { AI_MODEL } from "@/lib/ai";
+import { TelegramGroups, type ChatRow } from "@/components/TelegramGroups";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +18,26 @@ function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
 export default async function SettingsPage() {
   const h = await headers();
   const origin = process.env.APP_URL?.startsWith("http") ? process.env.APP_URL : `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
-  const [lastTg, tgCount, resumes, profile] = await Promise.all([
+  const [lastTg, tgCount, resumes, profile, tgChats, tgStats] = await Promise.all([
     prisma.telegramMessage.findFirst({ orderBy: { createdAt: "desc" } }),
     prisma.telegramMessage.count(),
     prisma.resume.count(),
     prisma.profile.findUnique({ where: { id: 1 } }),
+    prisma.telegramChat.findMany({ orderBy: { title: "asc" } }),
+    prisma.telegramMessage.groupBy({ by: ["chat"], _count: true, _sum: { jobsFound: true } }),
   ]);
+  const stat = new Map(tgStats.map((s) => [s.chat, s]));
+  const chatRows: ChatRow[] = tgChats.map((c) => ({
+    id: c.id,
+    title: c.title,
+    username: c.username,
+    kind: c.kind,
+    enabled: c.enabled,
+    messages: stat.get(c.id)?._count ?? 0,
+    jobs: stat.get(c.id)?._sum.jobsFound ?? 0,
+    lastSync: null,
+  }));
+  const lastUpload = tgChats.reduce<Date | null>((m, c) => (!m || c.seenAt > m ? c.seenAt : m), null);
   const env = (k: string) => Boolean(process.env[k]);
 
   return (
@@ -72,12 +87,14 @@ export default async function SettingsPage() {
         <TelegramTools />
       </section>
 
-      <section className="card space-y-2">
-        <h2 className="font-semibold">3 · Telegram job group sync</h2>
-        <p className="text-sm text-gray-700">
-          The worker in <code className="rounded bg-gray-100 px-1">apps/worker</code> logs in as you (read-only use), pulls new posts from the group every 20 minutes via GitHub Actions,
-          and sends them here to be parsed, scored and pushed to your bot. See the README for the one-time login step.
-        </p>
+      <section id="telegram-groups" className="card space-y-3">
+        <div>
+          <h2 className="font-semibold">3 · Telegram groups to read</h2>
+          <p className="text-sm text-gray-700">
+            Tick the groups and channels the worker should scan for jobs. It reads them as you every 20 minutes (GitHub Actions), and new jobs are scored and pushed to your bot.
+          </p>
+        </div>
+        <TelegramGroups chats={chatRows} lastUpload={lastUpload ? lastUpload.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : null} />
       </section>
     </div>
   );
